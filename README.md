@@ -1,4 +1,4 @@
-# keycloak-feishu-idp
+# keycloak-service-social-feishu
 
 Keycloak 飞书 授权登录插件
 
