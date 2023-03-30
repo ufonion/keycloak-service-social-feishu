@@ -257,8 +257,9 @@ public class FeishuIdentityProvider extends AbstractOAuth2IdentityProvider<Feish
      */
     private String getAppAccessToken() throws Exception {
         String appId = getConfig().getClientId();
-        if (!isBlank(feishuCache.getIfPresent(feishuAppAccessToken + appId))) {
-            return feishuCache.getIfPresent(feishuAppAccessToken + appId);
+        String token = feishuCache.getIfPresent(feishuAppAccessToken + appId);
+        if (!isBlank(token)) {           
+            return token;
         }
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("app_id", appId);
@@ -270,7 +271,7 @@ public class FeishuIdentityProvider extends AbstractOAuth2IdentityProvider<Feish
             logger.warn("Can't get app access token , response :" + responseJson);
             throw new Exception("Can't get app access token");
         }
-        String token = getJsonProperty(responseJson, "tenant_access_token");
+        token = getJsonProperty(responseJson, "tenant_access_token");
         feishuCache.put(feishuAppAccessToken + appId, token);
         return token;
     }
@@ -403,11 +404,11 @@ public class FeishuIdentityProvider extends AbstractOAuth2IdentityProvider<Feish
             if (error != null) {
                 logger.error(error + " for broker login " + getConfig().getProviderId());
                 if (error.equals(ACCESS_DENIED)) {
-                    return callback.cancelled(state);
+                    return callback.cancelled();
                 } else if (error.equals(OAuthErrorException.LOGIN_REQUIRED) || error.equals(OAuthErrorException.INTERACTION_REQUIRED)) {
-                    return callback.error(state, error);
+                    return callback.error(error);
                 } else {
-                    return callback.error(state, Messages.IDENTITY_PROVIDER_UNEXPECTED_ERROR);
+                    return callback.error(Messages.IDENTITY_PROVIDER_UNEXPECTED_ERROR);
                 }
             }
             try {
@@ -417,9 +418,10 @@ public class FeishuIdentityProvider extends AbstractOAuth2IdentityProvider<Feish
                 federatedIdentity = getFederatedIdentity(code);
                 // 必须将 state 设置到 code 中 ，否则会报错， 切记！！！！
                 // 此 code 非请求返回的 code， 而是 state
-                federatedIdentity.setCode(state);
+                // federatedIdentity.setCode(state);
+                federatedIdentity.setAuthenticationSession(this.callback.getAndVerifyAuthenticationSession(state));
                 federatedIdentity.setIdpConfig(getConfig());
-                federatedIdentity.setIdp(FeishuIdentityProvider.this);
+                federatedIdentity.setIdp(FeishuIdentityProvider.this);    
 
                 event.user(federatedIdentity.getBrokerUserId());
                 event.client(getConfig().getClientId());
